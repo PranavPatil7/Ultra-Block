@@ -1,0 +1,570 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<refentry id="ublk.1">
+
+<refmeta>
+  <refentrytitle>ublk</refentrytitle>
+  <manvolnum>1</manvolnum>
+  <refmiscinfo class="source">ublk</refmiscinfo>
+  <refmiscinfo class="manual">ublk: manage ublk devices</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+  <refname>ublk</refname>
+  <refpurpose>Utility to manage ublk devices</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+  <cmdsynopsis>
+    <command>ublk &lt;command&gt; [&lt;command options&gt;] [&lt;type specific options&gt;]</command>
+  </cmdsynopsis>	
+</refsynopsisdiv>
+
+<refsect1><title>DESCRIPTION</title>
+<para>
+  ublk is a utility that allows you to create, recover, view or delete user-space block devices.
+</para>
+<para>
+  ublk by default comes with several different types of devices, such as iscsi, nbd, nfs, null and loop.
+</para>
+<para>
+  The following commands are supported:
+</para>
+</refsect1>
+
+<refsect1><title>ADD COMMAND</title>
+<para>
+  Command to add a ublk device.
+</para>
+<para>
+  <command>
+    add {-t, --type} TYPE [{-n, --number} DEV_ID] [{-q, --queues} NR_HW_QUEUES]
+    [{-d, --depth} QUEUE_DEPTH]
+    [{-u, --uring_comp} URING_COMP] [{-g, --need-get-data} NEED_GET_DATA]
+    [{-r, --user_recovery} {0|1}]
+    [{-i, --user_recovery_reissue} {0|1}]
+    [{-e, --user_recovery_fail_io} {0|1}]
+    [--debug_mask=0x{DBG_MASK}] [--unprivileged]
+    [--usercopy] [--max_io_buf_bytes={BYTES}]
+    [{-z, --zerocopy}]
+    [&lt;type specific options&gt;]
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-t, --type</option></term>
+  <listitem>
+    <para>
+      Specifies the type of device to create. The five types of supported
+      devices are iscsi, nbd, nfs, null and loop.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-n, --number</option></term>
+  <listitem>
+    <para>
+      Create a device with this id. The device node will be /dev/ublkb_n_.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-q, --queue</option></term>
+  <listitem>
+    <para>
+      Number of queues to create. Each queue is services by a dedicated child process. Default is 1.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-d, --depth</option></term>
+  <listitem>
+    <para>
+      Maximum queue-depthfor each queue. Default is 4096.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-u, --uring_comp</option></term>
+  <listitem>
+    <para>
+      Force to complete io cmd via io_uring_cmd_complete_in_task so that
+      performance comparison is done easily with using task_work_add.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-g, --need_get_data</option></term>
+  <listitem>
+    <para>
+      User should issue io cmd again for write requests to
+      set io buffer address and copy data from bio vectors
+      to the userspace io buffer.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-r, --user_recovey</option></term>
+  <listitem>
+    <para>
+      Block devices are recoverable if ublk server exits and restarts.
+      Outstanding I/O when ublk server exits is met with errors.
+      I/O issued while there is no ublk server queues.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-i, --user_recovey_reissue</option></term>
+  <listitem>
+    <para>
+      Block devices are recoverable if ublk server exits and restarts
+      Outstanding I/O when ublk server exits is reissued
+      I/O issued while there is no ublk server queues 
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-e, --user_recovey_fail_io</option></term>
+  <listitem>
+    <para>
+      Block devices are recoverable if ublk server exits and restarts
+      Outstanding I/O when ublk server exits is met with errors
+      I/O issued while there is no ublk server is met with errors 
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--debug_mask</option></term>
+  <listitem>
+    <para>
+      Bitmask specifying which debug features to enable.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--max_io_buf_bytes</option></term>
+  <listitem>
+    <para>
+      Maximum I/O size. Default is 512kb.
+    </para>
+    <para>
+      NOTE: Memory buffers are pre-allocated with one buffer for each entry in queue_depth.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--unprivileged</option></term>
+  <listitem>
+    <para>
+      Unprivileged user can create /dev/ublkcN and /dev/ublkbN.
+    </para>
+    <para>
+      /dev/ublk-control needs to be available for unprivileged user, and it
+      can be done via udev rule to make all control commands available to
+      unprivileged user. Except for the command of UBLK_CMD_ADD_DEV, all
+      other commands are only allowed for the owner of the specified device.
+    </para>
+    <para>      
+      When userspace sends UBLK_CMD_ADD_DEV, the device pair's owner_uid and
+      owner_gid are stored to ublksrv_ctrl_dev_info by kernel, so far only
+      the current user's uid/gid is stored, that said owner of the created
+      device is always the current user.
+    </para>
+    <para>      
+      We still need udev rule to apply OWNER/GROUP with the stored owner_uid
+      and owner_gid.
+    </para>
+    <para>      
+      Then ublk server can be run as unprivileged user, and /dev/ublkbN can
+      be accessed and managed by its owner represented by owner_uid/owner_gid.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--user_copy</option></term>
+  <listitem>
+    <para>
+      Copy between request and user buffer by pread()/pwrite()
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-z, --zerocopy</option></term>
+  <listitem>
+    <para>
+      Zero-copy is based on io-uring uring_cmd of REGISTER_IO_BUF &amp; UNREGISTER_IO_BUF, which avoids data copy between ublk frontend request buffer and ublk server buffer, so memory bandwidth is saved, and throughput &amp; latency improvement can be often observed on large I/O size
+    </para>
+    <para>
+      This requires Linux kernel 6.15 or later.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+  
+<refsect2><title>NULL</title>
+<para>
+  The null device type does not take any extra options.
+</para>
+</refsect2>
+
+<refsect2><title>LOOP</title>
+<para>
+  Extra options for the loop device type:
+</para>
+<para>
+  <command>
+    add -t loop ... {-f, --file} FILE [--buffered_io] [-o, --offset OFFSET]
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-f, --file</option></term>
+  <listitem>
+    <para>
+      File to use as backing storage for the loop device.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--buffered_io</option></term>
+  <listitem>
+    <para>
+      Use buffered i/o for accessing the backing file. Default is direct i/o.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--offset</option></term>
+  <listitem>
+    <para>
+      Offset skips first NUM sectors on backing file.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+<para>
+  Example: Create a loop block device
+  <screen format="linespecific">
+    # ublk add -t loop -n 0 -f 10M.raw
+  </screen>
+</para>
+</refsect2>
+
+<refsect2><title>NBD</title>
+<para>
+  Extra options for the nbd (Network Block Device) device type:
+</para>
+<para>
+  <command>
+    add -t nbd ... {--host HOST | --unix UNIX_PATH} --export_name EXP_NAME [--send_zc] [--read_only]
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>--host</option></term>
+  <listitem>
+    <para>
+      Hostname of NBD server.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--host</option></term>
+  <listitem>
+    <para>
+      Hostname of NBD server to use.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--unix</option></term>
+  <listitem>
+    <para>
+      Path to unix domain socket to use to talk to NBD.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--export_name</option></term>
+  <listitem>
+    <para>
+      Name of NBD export.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--send_zc</option></term>
+  <listitem>
+    <para>
+      Use Zero-Copy.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--read_only</option></term>
+  <listitem>
+    <para>
+      Read-only device.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+</refsect2>
+
+<refsect2><title>NFS</title>
+<para>
+  Extra options for the nfs device type:
+</para>
+<para>
+  <command>
+    add -t nfs ... --nfs NFS-URL
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>--nfs NFS-URL</option></term>
+  <listitem>
+    <para>
+      URL to the NFS file to use as the block device.
+    </para>
+    <para>
+      The NFS-URL format is describe in the libnfs README:
+      https://github.com/sahlberg/libnfs/blob/9fa155bfa9d34347a669fbecf4a64259cc573724/README#L55
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+<para>
+  Example: Create a nfs block device
+  <screen format="linespecific">
+    # ublk add -t nfs -n 0 --nfs nfs://10.0.0.1/export/10M.raw
+  </screen>
+</para>
+</refsect2>
+
+<refsect2><title>iSCSI</title>
+<para>
+  Extra options for the iSCSI device type.
+  iSCSI support requires libiscsi 1.20.3 or later.
+</para>
+<para>
+  <command>
+    add -t iscsi ... --iscsi ISCSI-URL --initiator-name NAME
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>--iscsi ISCSI-URL</option></term>
+  <listitem>
+    <para>
+      URL to the iSCSI device to use as the block device.
+    </para>
+    <para>
+      The ISCSI-URL format is describe in the libiscsi README:
+      https://github.com/sahlberg/libiscsi/blob/eb19863f77e2bad4799ceb90e47fa3bc6205233e/README.md?plain=1#L37
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--initiator-name NAME</option></term>
+  <listitem>
+    <para>
+      The initiator name to use when logging in to the target.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+<para>
+  Example: Create an iSCSI block device
+  <screen format="linespecific">
+    # ublk add -t iscsi -n 0 --iscsi iscsi://iscsi-stgt/iqn.2001-04.com.ronnie.sr0/1 --initiator-name iqn.ronnie.test
+  </screen>
+</para>
+</refsect2>
+
+</refsect1>
+
+<refsect1><title>DEL COMMAND</title>
+<para>
+  Command to delete a ublk device.
+</para>
+<para>
+  <command>
+    del {-n, --number} DEV_ID [-a, --all] [--async]
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-n, --number</option></term>
+  <listitem>
+    <para>
+      Delete the device with this id.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-a, --all</option></term>
+  <listitem>
+    <para>
+      Delete all devices.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+<para>
+  Example: Deleting a loop block device
+  <screen format="linespecific">
+    # ublk del -n 0
+  </screen>
+</para>
+</refsect1>
+
+<refsect1><title>SET_AFFINITY COMMAND</title>
+<para>
+  Command to change queue affinity.
+</para>
+<para>
+  <command>
+    set_affinity {-n, --number} DEV_ID [-q, --queue] QID --cpuset="[SET]"
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-n, --number</option></term>
+  <listitem>
+    <para>
+      Change the affinity on this device.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-q, --queue</option></term>
+  <listitem>
+    <para>
+      Which queue to change the affinity for.
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>--cpuset="[SET]"</option></term>
+  <listitem>
+    <para>
+      The new cpuset for this device/queue. Format is a comma-separated list of CPUs within squre brackets.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+<para>
+  Example: Set affinity to core 7 for device 0, queue 1
+  <screen format="linespecific">
+    # ublk set_affinity -n 0 -q 1 --cpuset="[7]"
+  </screen>
+</para>
+</refsect1>
+
+<refsect1><title>LIST COMMAND</title>
+<para>
+  List one or all devices and show their configutaion. 
+</para>
+<para>
+  <command>
+    list {-n, --number} DEV_ID [-v, --verbose]
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-n, --number</option></term>
+  <listitem>
+    <para>
+      List the device with this id. If omitted all devices will be listed
+    </para>
+  </listitem>
+  </varlistentry>
+  <varlistentry><term><option>-v, --verbose</option></term>
+  <listitem>
+    <para>
+      Verbose listing. Include the JSON device arguments in the output.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+</refsect1>
+
+<refsect1><title>RECOVER COMMAND</title>
+<para>
+  Recover a failed ublk device.
+</para>
+<para>
+  <command>
+    recover {-n, --number} DEV_ID
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-n, --number</option></term>
+  <listitem>
+    <para>
+      Device to recover.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+</refsect1>
+
+<refsect1><title>FEATURES COMMAND</title>
+<para>
+  Show supported features for the ublk driver.
+</para>
+<para>
+  <command>
+    features
+  </command>
+</para>
+</refsect1>
+
+<refsect1><title>HELP COMMAND</title>
+<para>
+  Show generic ot type specific help.
+</para>
+<para>
+  <command>
+    help [{-t, --type} TYPE]
+  </command>
+</para>
+<variablelist>
+  <varlistentry><term><option>-t, --type</option></term>
+  <listitem>
+    <para>
+      Show help page. It -t is specified, show help page for the specific device type.
+    </para>
+  </listitem>
+  </varlistentry>
+</variablelist>
+</refsect1>
+
+<refsect1><title>VERSION</title>
+<para>
+  Show help page..
+</para>
+<para>
+  <command>
+    {-v, --version}
+  </command>
+</para>
+</refsect1>
+
+<refsect1><title>Recovery</title>
+<para>
+  There are three arguments that control how ublk will behave in case of a failure,
+  such as crashing. The default behavior is no recovery and the device will fail and be removed
+  once the target exists.
+</para>
+<para>
+  To enable recovery mode set "--recovery 1" on the command line. Then instead of removing the device
+  upon failure it will instead become inactive in a quiesced state.
+  <screen format="linespecific">
+dev id 0: nr_hw_queues 1 queue_depth 128 block size 4096 dev_capacity 20480
+    max rq size 524288 daemon pid 1239110 state QUIESCED
+    flags 0x4a [ URING_CMD_COMP_IN_TASK RECOVERY CMD_IOCTL_ENCODE ]
+    ublkc: 511:0 ublkb: 259:4 owner: 0:0
+    queue 0: tid 1239112 affinity(0 1 2 3 4 5 6 7 )
+    target {"backing_file":"10M","dev_size":10485760,"direct_io":1,"name":"loop","offset":0,"type":0}
+  </screen>
+  In this state the block device still exists but no I/O can be performed.
+</para>
+<para>
+  To recover a QUIESCED device you can use the recover command:
+  <command>
+    ublk recover -n DEV_ID
+  </command>
+</para>
+<para>
+  There are two additional flags that control how ublk will handle I/O that were in flight when
+  a device is recovered.
+</para>
+<refsect2><title>--user_recovery_reissue 1</title>
+<para>
+  When the device is recovered ublk will reissue any I/O that were in flight.
+</para>
+</refsect2>
+<refsect2><title>--user_recovery_fail_io 1</title>
+<para>
+  When the device is recovered ublk will fail all I/O and return an error back to the application.
+</para>
+</refsect2>
+</refsect1>
+
+<refsect1><title>SEE ALSO</title>
+<para>
+  <ulink url="http://github.com/ublk-org/ublksrv"/>
+</para>
+</refsect1>
+
+</refentry>

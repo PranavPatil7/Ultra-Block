@@ -1,0 +1,42 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT or GPL-2.0-only
+
+. common/fio_common
+
+echo -e "\trun fio with kill ubq_deamon"
+
+BS=4k
+RW=rw
+JOBS=4
+QUEUES=2
+RT=$TRUNTIME
+LOOPS=4
+URING_COMP=1
+NEED_GET_DATA=1
+
+ublk_run_abort_test()
+{
+	local cnt=$1
+	local state=""
+
+	export T_TYPE_PARAMS="-t null -q $QUEUES -u $URING_COMP -g $NEED_GET_DATA"
+	local dev=`__create_ublk_dev`
+
+	echo -e "\trun fio with killing $dev(ublk add $T_TYPE_PARAMS) queue daemon $cnt"
+	__run_fio_libaio $dev $BS $RW $JOBS $RT > /dev/null 2 >& 1 &
+	sleep 2
+	state=`__ublk_kill_daemon $dev "DEAD"`
+	[ "$state" != "DEAD" ] && echo "device isn't dead($state) after killing daemon" && exit -1
+	RES=`__remove_ublk_dev_return $dev`
+	if [ $RES -ne 0 ]; then
+		echo -e "\tdelete $dev failed"
+		exit -1
+	fi
+	wait
+}
+
+for NEED_GET_DATA in `seq 0 1`; do
+	for CNT in `seq $LOOPS`; do
+		ublk_run_abort_test $CNT
+	done
+done
